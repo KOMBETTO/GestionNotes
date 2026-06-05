@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Modèle Utilisateur avec gestion des rôles
+model Utilisateur {
+  id           Int                           @id @default(autoincrement())
+  nom          String
+  email        String                        @unique
+  mot_de_passe String
+  role         String                        @default("PARENT") // ADMIN, ENSEIGNANT, PARENT
+  eleves       Eleve[]                       @relation("ParentEleves")
+  notes        Note[]                        @relation("EnseignantNotes")
+  affectations AffectationClasseEnseignant[]
+  createdAt    DateTime                      @default(now())
+  updatedAt    DateTime                      @updatedAt
+}
+
+// 2. Modèle Élève lié à un parent et une classe
+model Eleve {
+  id            Int         @id @default(autoincrement())
+  nom           String
+  dateNaissance DateTime
+  classe        Classe      @relation(fields: [classeId], references: [id])
+  classeId      Int
+  parent        Utilisateur @relation("ParentEleves", fields: [parentId], references: [id])
+  parentId      Int
+  notes         Note[]
+}
+
+// 3. Modèle Classe (Ex: 6ème A, 3ème B)
+model Classe {
+  id           Int                           @id @default(autoincrement())
+  nom          String                        @unique
+  eleves       Eleve[]
+  affectations AffectationClasseEnseignant[]
+}
+
+// 4. Modèle Matière (Ex: Mathématiques, Histoire)
+model Matiere {
+  id           Int                           @id @default(autoincrement())
+  nom          String                        @unique
+  notes        Note[]
+  affectations AffectationClasseEnseignant[]
+}
+
+// 5. Modèle Note centrale
+model Note {
+  id           Int         @id @default(autoincrement())
+  eleve        Eleve       @relation(fields: [eleveId], references: [id], onDelete: Cascade)
+  eleveId      Int
+  matiere      Matiere     @relation(fields: [matiereId], references: [id])
+  matiereId    Int
+  enseignant   Utilisateur @relation("EnseignantNotes", fields: [enseignantId], references: [id])
+  enseignantId Int
+  valeur       Float
+  appreciation String?
+  createdAt    DateTime    @default(now())
+}
+
+// 6. Table de jointure pour savoir quel prof enseigne quelle matière dans quelle classe
+model AffectationClasseEnseignant {
+  id           Int         @id @default(autoincrement())
+  enseignant   Utilisateur @relation(fields: [enseignantId], references: [id])
+  enseignantId Int
+  classe       Classe      @relation(fields: [classeId], references: [id])
+  classeId     Int
+  matiere      Matiere     @relation(fields: [matiereId], references: [id])
+  matiereId    Int
+}
